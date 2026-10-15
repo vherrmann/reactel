@@ -181,5 +181,32 @@
             (should (eq (key-binding (kbd "TAB")) 'forward-button))))
       (kill-buffer buf))))
 
+;; Painting each line of STRING directly (no substring) keeps the indentation
+;; rules: empty lines are not indented, text after a newline is.
+(ert-deftest ui-indent-multiline-strings ()
+  (ui-should-render (reactel-c-vstack :indent 2 "a\n\nb\nc") "  a\n\n  b\n  c\n")
+  (ui-should-render (reactel-c-vstack :indent 1 (reactel-c-text "x" "\ny\n" "z")) " x\n y\n z\n")
+  (let ((s (reactel-render-to-string
+            (reactel-c-vstack :indent 2 (reactel-c-text :face 'bold "p\nq")))))
+    (should (equal s "  p\n  q\n"))
+    (should (eq (get-text-property 2 'face s) 'bold))
+    (should (eq (get-text-property 6 'face s) 'bold))))
+
+;; Repaints replace the whole text; recording that as undo made the undo list
+;; the main allocation of every commit.
+(ert-deftest ui-repaint-records-no-undo ()
+  (let ((buf "*reactel-buffer-test*"))
+    (unwind-protect
+        (progn
+          (reactel-render-buffer buf (reactel-c-vstack "one"))
+          (with-current-buffer buf
+            (buffer-enable-undo)
+            (setq buffer-undo-list nil))
+          (reactel-render-buffer buf (reactel-c-vstack "two" "three"))
+          (with-current-buffer buf
+            (should (equal (buffer-string) "two\nthree\n"))
+            (should-not buffer-undo-list)))
+      (kill-buffer buf))))
+
 (provide 'buffer-test)
 ;;; buffer-test.el ends here

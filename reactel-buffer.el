@@ -66,14 +66,20 @@ BUFFER is, for the container, the buffer painted into (nil: a string)."
 
 (defun reactel-buffer--insert (string)
   "Insert STRING at point, applying the current indentation to its lines."
-  (let ((start 0) (len (length string)))
-    (while (< start len)
-      (let* ((nl (string-search "\n" string start))
-             (end (if nl (1+ nl) len)))
-        (when (and (bolp) (not (string-empty-p reactel-buffer--indent)) (not (eql nl start)))
-          (insert reactel-buffer--indent))
-        (insert (substring string start end))
-        (setq start end)))))
+  (let ((indent reactel-buffer--indent))
+    (if (string-empty-p indent)
+        (insert string)
+      ;; Insert at once, then indent each non-empty line that starts in
+      ;; STRING (no substring per line).
+      (let* ((beg (point))
+             (end (progn (insert string) (point))))
+        (goto-char beg)
+        (while (< (point) end)
+          (when (and (bolp) (not (eq (char-after) ?\n)))
+            (insert indent)
+            (setq end (+ end (length indent))))
+          (unless (search-forward "\n" end t)
+            (goto-char end)))))))
 
 (defun reactel-buffer--end-line ()
   "Finish the current line unless at the beginning of one."
@@ -416,7 +422,8 @@ bottom-right.")
   "Keymap of `reactel-mode'.  Buttons also react to the mouse.")
 
 (define-derived-mode reactel-mode special-mode "Reactel"
-  "Major mode of buffers rendered by `reactel-render-buffer'.")
+  "Major mode of buffers rendered by `reactel-render-buffer'."
+  (buffer-disable-undo))
 
 (defun reactel-buffer--line-col (pos)
   "Return (LINE . COLUMN) of POS in the current buffer."
@@ -434,6 +441,10 @@ bottom-right.")
   (when (buffer-live-p buffer)
     (with-current-buffer buffer
       (let* ((inhibit-read-only t)
+             ;; A repaint is not an edit: recording the erased and
+             ;; reprinted text as undo dominated allocation.
+             (buffer-undo-list t)
+             (inhibit-modification-hooks t)
              (point (reactel-buffer--line-col (point)))
              (windows (mapcar (lambda (w)
                                 (list w (reactel-buffer--line-col (window-point w))

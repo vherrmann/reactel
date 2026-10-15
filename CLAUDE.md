@@ -47,6 +47,7 @@ make test-compiled # whole suite with every component compiled (also with strict
 make lint         # static Rules of React check over the sources
 make compile      # byte-compile, warnings are errors; cleans up .elc files
 make indent       # reindent all sources with Emacs's rules (scripts/reindent.el)
+make bench        # repaint benchmark of the buffer backend, byte-compiled (scripts/bench.el)
 ```
 
 Emacs is installed as `emacs-nox`; dash.el is found automatically (`DASH_DIR=` to override) and is

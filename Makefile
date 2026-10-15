@@ -2,7 +2,7 @@ EMACS ?= emacs
 # Directory containing dash.el (needed by examples and their tests).
 DASH_DIR ?= $(firstword $(wildcard /usr/share/emacs/site-lisp/elpa-src/dash-*) $(wildcard $(HOME)/.emacs.d/elpa/dash-*))
 LOAD = -L . -L examples $(if $(DASH_DIR),-L $(DASH_DIR))
-.PHONY: test test-strict test-compiled lint compile indent
+.PHONY: test test-strict test-compiled lint compile indent bench
 test:
 	$(EMACS) -Q --batch $(LOAD) -l ert -l test/reactel-test.el -l test/lint-test.el -l test/strict-test.el -l test/compile-test.el -l test/indent-test.el -l test/backend-test.el -l test/buffer-test.el -l test/examples-test.el -f ert-run-tests-batch-and-exit
 compile:
@@ -28,3 +28,9 @@ lint:
 # Reindent all sources with Emacs's rules (components indent their children by two columns).
 indent:
 	$(EMACS) -Q --batch $(LOAD) -l scripts/reindent.el
+
+# Repaint benchmark of the buffer backend, byte-compiled (scripts/bench.el).
+bench:
+	@rm -f *.elc
+	@$(EMACS) -Q --batch $(LOAD) -f batch-byte-compile reactel.el reactel-node.el reactel-c.el reactel-buffer.el 2>/dev/null; \
+	$(EMACS) -Q --batch $(LOAD) -l scripts/bench.el -f reactel-bench-run; status=$$?; rm -f *.elc; exit $$status
